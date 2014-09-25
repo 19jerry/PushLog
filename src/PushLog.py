@@ -12,12 +12,13 @@ LOG_BASE = '/logs/'
 PID = '/var/run/PushLog.pid'
 THREADNUM = 30
 DEBUG = 0
+DAY_MIN = ''
 
 TM = ''
 socket.setdefaulttimeout(10) 
 
-def PrintLog(s):
-	if not DEBUG:	
+def PrintLog(s, tt=''):
+	if not DEBUG and tt == '':	
 		return
         sys.stdout.write("%s: %s" % (time.strftime('%Y-%m-%d %H:%M:%S '), str(s) + '\n'))
         sys.stdout.flush()
@@ -120,13 +121,26 @@ class TaskManager(object):
                         self.finished += 1
                         self.lock.release()
 
+def gen_next_min(day_min):
+	next_min = time.strftime('%Y%m%d%H%M',(time.localtime(time.mktime(time.strptime(day_min, '%Y%m%d%H%M')) + 60)))
+	return next_min
+
+def juge_change():
+	global DAY_MIN
+	if time.strftime('%Y%m%d%H%M') != DAY_MIN:
+		next_day_min = gen_next_min(DAY_MIN)
+		DAY_MIN = next_day_min
+		return 1
+	return 0
 
 def GetFileList():
-	day_min = time.strftime('%Y%m%d%H%M')
-	videolist = LOG_BASE + '/access.baidu.' + day_min
+	global DAY_MIN
+	videolist = LOG_BASE + '/access.baidu' + DAY_MIN
+	PrintLog('Process logfile ' + videolist, 'info')
 	if not os.path.isfile(videolist):
 		PrintLog('%s Not Exists' % videolist)
-		time.sleep(3)
+		time.sleep(1)
+		juge_change()
 		return
 
 	fp = open(videolist, 'rb')
@@ -141,10 +155,11 @@ def GetFileList():
                         TM.addtask(line)
                         line = fp.readline()[:-1]
 
-		if time.strftime('%Y%m%d%H%M') != day_min:
+		day_change = juge_change()
+		if day_change:
 			break
 		
-		time.sleep(3)
+		time.sleep(1)
 
 
 def main():
@@ -173,7 +188,7 @@ def main():
                 cmd = 'ps -p %s' % pid
                 rt = os.popen(cmd).read().split('\n')
                 if rt[1] != '':
-                        PrintLog('Program is runing!')
+                        PrintLog('Program is runing!', 'info')
                         sys.exit()
 
         pid = os.getpid()
@@ -188,7 +203,9 @@ def main():
         TM = TaskManager()
         # Start Task Manager
         TM.start()
-
+	day_min = time.strftime('%Y%m%d%H%M')
+	global DAY_MIN
+	DAY_MIN = day_min
         while 1:
                 try:
                         # Get File List
