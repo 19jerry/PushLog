@@ -123,7 +123,7 @@ class TaskManager(object):
 
 def GetFileList():
 	day_min = time.strftime('%Y%m%d%H%M')
-	videolist = LOG_BASE + 'access.baidu.' + day_min
+	videolist = LOG_BASE + '/access.baidu.' + day_min
 	if not os.path.isfile(videolist):
 		PrintLog('%s Not Exists' % videolist)
 		time.sleep(3)
